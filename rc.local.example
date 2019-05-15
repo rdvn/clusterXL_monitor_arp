@@ -1,0 +1,18 @@
+# start - run the \$FWDIR/bin/clusterXL_monitor_arp script during boot
+echo " "
+echo "--- Checking if '\$FWDIR/bin/clusterXL_monitor_arp' script is running..."
+echo " "
+ps auxw | pgrep "clusterXL_monitor_arp" > /dev/null
+SCRIPT_RUNS=$?
+if [ "$SCRIPT_RUNS" -eq 0 ];
+	then
+		echo "--- The 'clusterXL_monitor_arp' script is already running..."
+		echo " "
+elif [ "$SCRIPT_RUNS" -eq 1 ];
+	then
+		echo "--- The 'clusterXL_monitor_arp' script is NOT running..."
+		echo "--- Trying to run it..."
+		echo " "
+		$FWDIR/bin/clusterXL_monitor_arp 60 1 > /dev/null &
+fi
+# end - run the \$FWDIR/bin/clusterXL_monitor_arp script during boot

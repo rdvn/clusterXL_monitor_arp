@@ -1,0 +1,71 @@
+#!/bin/sh
+#
+# The script tries to ping the hosts written in the file $FWDIR/conf/cpha_arp_hosts. 
+# The names (must be resolveable) to the IPs must be written on seperate lines. Second 
+# argument in line is interface thru which we try to arping the host.
+# The file must not contain anything else.
+# example:
+# 10.10.10.1 eth0
+# 10.10.20.1 eth1
+# 
+# We ping the given hosts every number of seconds given as parameter to the script.
+# USAGE:
+# cpha_monitor_ips X silent
+# where X is the number of seconds between loops over the IPs.
+# if silent is set to 1, no messages will appear on the console
+#
+# We initially register a pnote named "arp_monitor" in the problem notification mechanism
+# when we detect that a host is not responding we report the pnote to be in "problem" state.
+# when ping succeeds again - we report the pnote is OK.
+
+silent=0
+
+if [ -n "$2" ]; then
+        if [ $2 -le 1 ]; then
+                silent=$2
+        fi
+fi
+hostfile=$FWDIR/conf/cpha_arp_hosts
+arch=`uname -s`
+if [ $arch = "Linux" ]; then
+        #system is linux
+        arping="arping -q -f -w 1"
+else
+        arping="arping"
+fi
+$FWDIR/bin/cphaconf set_pnote -d arp_monitor -t 0 -s ok register
+TRUE=1
+while [ "$TRUE" ]
+do
+        result=1
+        while IFS=: read -r line
+        do
+                ipaddr=`echo $line | cut -d' ' -f 1`
+                interface=`echo $line | cut -d' ' -f 2`
+                [ $silent = 0 ] && echo "arpinging $ipaddr on $interface using command $arping"
+                if [ $arch = "Linux" ]; then
+                        $arping -I $interface $ipaddr > /dev/null 2>&1
+                else
+                        $arping -I $interface $ipaddr $1 > /dev/null 2>&1
+                fi
+                status=$?
+                if [ $status = 0 ]; then
+                        [ $silent = 0 ] && echo " $hosts is alive"
+                else
+                        [ $silent = 0 ] && echo " $hosts is not responding"
+                        result=0
+                fi
+        done < $hostfile
+
+        [ $silent = 0 ] && echo "done arpinging"
+
+        if [ $result = 0 ]; then
+                [ $silent = 0 ] && echo " Cluster member should be down!"
+                $FWDIR/bin/cphaconf set_pnote -d arp_monitor -s problem report
+        else
+                [ $silent = 0 ] && echo " Cluster member seems fine!"
+                $FWDIR/bin/cphaconf set_pnote -d arp_monitor -s ok report
+        fi
+        [ "$silent" = 0 ] && echo "sleeping"
+        [ -z "$1" ] && sleep $1 || sleep 60
+done
