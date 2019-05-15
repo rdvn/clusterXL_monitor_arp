@@ -1,4 +1,3 @@
-  1 # clusterXL_monitor_arp
 # clusterXL_monitor_arp
 
 The **clusterXL_monitor_ips** script can be used to arping a list of predefined IP addresses and change the state of the cluster member to *Down* or *Up* based on the replies to these pings.
